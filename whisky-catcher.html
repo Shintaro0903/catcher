@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WHISKY CATCHER | ウイスキーキャッチャー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Monoton&family=Cormorant+Garamond:wght@500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wood-dark:#241207;
+    --wood-mid:#3b2416;
+    --wood-light:#5a3820;
+    --brass:#c9a35a;
+    --brass-bright:#f0d189;
+    --case-back:#0d1416;
+    --amber:#e8a33d;
+    --amber-glow:#ffb454;
+    --paper:#f2e6cf;
+    --ink:#241207;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;
+    min-height:100vh;
+    background:radial-gradient(ellipse at 50% 0%, #241812 0%, #0c0806 70%);
+    font-family:'Cormorant Garamond',serif;
+    color:var(--paper);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:18px 10px 60px;
+    overflow-x:hidden;
+  }
+  .hidden{ display:none !important; }
+
+  /* ============ shared bits ============ */
+  .loading{
+    padding:60px 20px; text-align:center; color:var(--brass-bright);
+    font-family:'Oswald',sans-serif; letter-spacing:2px; font-size:13px;
+  }
+
+  /* ============ PLAYER: cabinet ============ */
+  .cabinet{
+    width:100%;
+    max-width:420px;
+    background:
+      linear-gradient(180deg, var(--wood-light) 0%, var(--wood-mid) 12%, var(--wood-mid) 88%, var(--wood-dark) 100%);
+    border-radius:22px;
+    padding:14px;
+    box-shadow:
+      0 30px 60px rgba(0,0,0,0.6),
+      inset 0 0 0 2px rgba(0,0,0,0.4),
+      inset 0 2px 0 rgba(255,255,255,0.06);
+    position:relative;
+  }
+  .cabinet::before{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:22px;
+    background-image:repeating-linear-gradient(95deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 1px, transparent 1px, transparent 5px);
+    opacity:0.5;
+    pointer-events:none;
+  }
+  .marquee{
+    position:relative; text-align:center; padding:14px 6px 10px;
+    border-radius:14px 14px 4px 4px;
+    background:linear-gradient(180deg, #3a1414, #200b0b);
+    box-shadow:inset 0 0 0 2px rgba(201,163,90,0.5), inset 0 -10px 20px rgba(0,0,0,0.5);
+    margin-bottom:10px;
+  }
+  .marquee h1{
+    font-family:'Monoton', cursive;
+    font-size:clamp(22px, 6.4vw, 30px);
+    letter-spacing:2px; margin:0; color:var(--amber-glow);
+    text-shadow:0 0 6px var(--amber-glow), 0 0 16px var(--amber), 0 0 34px #ff7a1f;
+    animation:flicker 4.5s infinite ease-in-out;
+  }
+  .marquee p{
+    margin:4px 0 0; font-family:'Oswald',sans-serif; font-size:10px;
+    letter-spacing:4px; color:var(--brass); text-transform:uppercase;
+  }
+  @keyframes flicker{
+    0%,19%,21%,23%,80%,100%{opacity:1;}
+    20%{opacity:0.55;} 22%{opacity:0.9;}
+  }
+  .case-frame{
+    position:relative; border-radius:12px; padding:8px;
+    background:linear-gradient(180deg, #2a1810, #1a0e08);
+    box-shadow:inset 0 0 0 2px rgba(201,163,90,0.35);
+  }
+  .case{
+    position:relative; border-radius:8px; overflow:hidden;
+    background:
+      radial-gradient(ellipse at 50% 10%, rgba(255,180,84,0.18), transparent 55%),
+      linear-gradient(180deg, var(--case-back) 0%, #071012 100%);
+    box-shadow:inset 0 0 40px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .case-shine{
+    position:absolute; inset:0;
+    background:linear-gradient(115deg, rgba(255,255,255,0.09) 0%, transparent 18%, transparent 82%, rgba(255,255,255,0.05) 100%);
+    pointer-events:none; z-index:5;
+  }
+  #game{ display:block; width:100%; height:auto; }
+  .panel{
+    margin-top:10px;
+    background:linear-gradient(180deg, var(--wood-mid), var(--wood-dark));
+    border-radius:12px; padding:12px 12px 14px;
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,0.35), inset 0 2px 6px rgba(255,255,255,0.05);
+    display:flex; flex-direction:column; gap:10px; position:relative; z-index:2;
+  }
+  .status-row{
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:1.5px; color:var(--brass-bright);
+  }
+  .status-row .digits{
+    background:#0c0805; border-radius:5px; padding:4px 9px;
+    font-variant-numeric:tabular-nums; box-shadow:inset 0 0 0 1px rgba(201,163,90,0.4);
+    color:var(--amber-glow); text-shadow:0 0 6px rgba(255,180,84,0.6);
+  }
+  .grab-btn{
+    width:100%; padding:16px 0; border-radius:50px; border:none; cursor:pointer;
+    font-family:'Oswald',sans-serif; font-size:17px; font-weight:600; letter-spacing:3px;
+    color:#2a1508;
+    background:linear-gradient(180deg, var(--brass-bright), var(--brass) 60%, #a17c3a);
+    box-shadow:0 5px 0 #6e5220, 0 8px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6);
+    transition:transform 0.06s, box-shadow 0.06s;
+  }
+  .grab-btn:active{ transform:translateY(4px); box-shadow:0 1px 0 #6e5220, 0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6); }
+  .grab-btn:disabled{ opacity:0.5; cursor:default; }
+  .hint{ text-align:center; font-size:12px; color:#c9b89a; letter-spacing:0.5px; min-height:16px; }
+
+  .toast{
+    position:fixed; left:50%; top:16px; transform:translate(-50%, -140%);
+    background:linear-gradient(180deg, var(--paper), #e6d5ac); color:var(--ink);
+    padding:12px 20px; border-radius:10px; font-family:'Cormorant Garamond', serif;
+    font-weight:600; font-size:15px; text-align:center;
+    box-shadow:0 12px 28px rgba(0,0,0,0.5); border:1px solid #b89653; z-index:50;
+    transition:transform 0.35s cubic-bezier(.2,1.4,.4,1); max-width:88vw;
+  }
+  .toast.show{ transform:translate(-50%, 0); }
+  .toast .rarity{ display:block; font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:3px; margin-top:3px; text-transform:uppercase; }
+  .r-common .rarity{ color:#6b6b6b; }
+  .r-rare .rarity{ color:#8a5a1f; }
+  .r-super .rarity{ color:#9a1f4a; }
+  .r-fail .rarity{ color:#b23a2f; }
+
+  /* end-of-game result card */
+  .result-card{
+    margin-top:10px; background:linear-gradient(180deg, var(--paper), #e6d5ac); color:var(--ink);
+    border-radius:14px; padding:20px 16px; text-align:center;
+    box-shadow:0 14px 30px rgba(0,0,0,0.5); border:1px solid #b89653;
+  }
+  .result-card .eyebrow{ font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:3px; color:#8a6a2f; text-transform:uppercase; }
+  .result-card h2{ margin:8px 0 4px; font-size:26px; }
+  .result-card .tier-tag{ display:inline-block; font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:2px; padding:3px 10px; border-radius:20px; margin-top:4px; }
+  .result-card p.note{ font-size:13px; color:#6a5636; margin-top:14px; line-height:1.6; }
+  .status-screen{
+    margin-top:10px; background:rgba(0,0,0,0.3); border-radius:14px; padding:26px 18px;
+    text-align:center; box-shadow:inset 0 0 0 1px rgba(201,163,90,0.3);
+  }
+  .status-screen h2{ font-family:'Oswald',sans-serif; letter-spacing:2px; font-size:16px; color:var(--brass-bright); margin:0 0 8px;}
+  .status-screen p{ font-size:14px; color:#c9b89a; line-height:1.7; margin:0; }
+
+  /* ============ ADMIN ============ */
+  .admin-wrap{ width:100%; max-width:640px; }
+  .admin-card{
+    background:linear-gradient(180deg, #2c1d12, #1c1109);
+    border-radius:16px; padding:20px; margin-bottom:16px;
+    box-shadow:0 16px 34px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(201,163,90,0.25);
+  }
+  .admin-card h2{
+    font-family:'Oswald',sans-serif; font-size:13px; letter-spacing:2.5px; text-transform:uppercase;
+    color:var(--brass-bright); margin:0 0 14px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .admin-title{ text-align:center; margin-bottom:18px; }
+  .admin-title h1{
+    font-family:'Monoton',cursive; color:var(--amber-glow); letter-spacing:2px; font-size:24px; margin:0;
+    text-shadow:0 0 10px rgba(255,180,84,0.5);
+  }
+  .admin-title p{ font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:3px; color:var(--brass); margin:6px 0 0; }
+
+  .lock-screen{ max-width:340px; margin:60px auto; text-align:center; }
+  .lock-screen input{
+    width:100%; padding:12px 14px; border-radius:8px; border:1px solid rgba(201,163,90,0.4);
+    background:#0c0805; color:var(--paper); font-size:16px; margin:14px 0; font-family:'Oswald',sans-serif; letter-spacing:2px;
+  }
+  .btn{
+    font-family:'Oswald',sans-serif; letter-spacing:1.5px; font-size:13px; font-weight:600;
+    padding:11px 18px; border-radius:8px; border:none; cursor:pointer;
+    background:linear-gradient(180deg, var(--brass-bright), var(--brass));
+    color:#2a1508; box-shadow:0 3px 0 #6e5220;
+  }
+  .btn:active{ transform:translateY(2px); box-shadow:0 1px 0 #6e5220; }
+  .btn.secondary{ background:none; color:var(--brass-bright); box-shadow:none; border:1px solid rgba(201,163,90,0.5); }
+  .btn.danger{ background:linear-gradient(180deg,#d9877a,#a2493a); color:#2a0e08; box-shadow:0 3px 0 #6e2a1f; }
+  .btn.small{ padding:6px 10px; font-size:11px; }
+  .err-msg{ color:#ff8a7a; font-size:13px; min-height:18px; }
+
+  .prize-card{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:rgba(255,255,255,0.04); border-radius:10px; padding:12px 14px; margin-bottom:8px;
+  }
+  .prize-card .info{ flex:1; min-width:0; }
+  .prize-card .info .name{ font-size:15px; font-weight:600; color:var(--paper); }
+  .prize-card .info .meta{ font-family:'Oswald',sans-serif; font-size:11px; color:#b3a284; margin-top:2px; }
+  .prize-card .actions{ display:flex; align-items:center; gap:6px; flex:none; }
+  .rarity-chip{
+    font-family:'Oswald',sans-serif; font-size:10px; font-weight:600; letter-spacing:1px;
+    padding:4px 9px; border-radius:20px; flex:none;
+  }
+  .rarity-chip.super{ background:rgba(240,209,137,0.25); color:var(--brass-bright); }
+  .rarity-chip.rare{ background:rgba(90,150,224,0.22); color:#8fb8ea; }
+  .rarity-chip.common{ background:rgba(160,160,160,0.2); color:#c9c2b3; }
+  .icon-btn{
+    font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:1px; padding:6px 10px;
+    border-radius:6px; border:1px solid rgba(201,163,90,0.4); background:none; color:var(--brass-bright); cursor:pointer;
+  }
+  .icon-btn.rm{ border-color:rgba(255,138,122,0.5); color:#ff8a7a; }
+
+  .field-label{
+    display:block; font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:1.5px;
+    color:var(--brass); text-transform:uppercase; margin:10px 0 4px;
+  }
+  .edit-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  #prizeEditCard input, #prizeEditCard select, #prizeEditCard textarea{
+    width:100%; padding:9px 10px; border-radius:7px; border:1px solid rgba(201,163,90,0.35);
+    background:#0c0805; color:var(--paper); font-size:13px; font-family:'Cormorant Garamond',serif;
+    resize:vertical;
+  }
+  .row-actions{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+
+  .url-box{
+    display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;
+  }
+  .url-box input{
+    flex:1; min-width:180px; padding:10px 12px; border-radius:8px; border:1px solid rgba(201,163,90,0.4);
+    background:#0c0805; color:var(--amber-glow); font-family:'Oswald',sans-serif; font-size:12px;
+  }
+  .gen-note{ font-size:12px; color:#c9b89a; margin-top:8px; line-height:1.6; }
+
+  table.orders{ width:100%; border-collapse:collapse; font-size:12px; }
+  table.orders th{
+    text-align:left; font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:1px;
+    color:var(--brass); text-transform:uppercase; padding:6px 8px; border-bottom:1px solid rgba(201,163,90,0.3);
+  }
+  table.orders td{ padding:7px 8px; border-bottom:1px solid rgba(255,255,255,0.06); color:var(--paper); }
+  .badge{ font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:1px; padding:3px 8px; border-radius:12px; }
+  .badge.unused{ background:rgba(150,150,150,0.25); color:#ddd; }
+  .badge.playing{ background:rgba(232,163,61,0.25); color:var(--amber-glow); }
+  .badge.done{ background:rgba(90,224,122,0.2); color:#8be09f; }
+  .empty-note{ color:#8a7a63; font-size:13px; text-align:center; padding:14px 0; }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading">読み込み中…</div>
+
+<!-- ============ PLAYER VIEW ============ -->
+<div id="playerApp" class="cabinet hidden">
+  <div class="marquee">
+    <h1>WHISKY CATCHER</h1>
+    <p>slip-grip crane co.</p>
+  </div>
+
+  <div id="playerGameArea">
+    <div class="case-frame">
+      <div class="case">
+        <canvas id="game" width="360" height="360"></canvas>
+        <div class="case-shine"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="status-row">
+        <span>挑戦回数 <span class="digits" id="attemptCount">000</span></span>
+      </div>
+      <button class="grab-btn" id="grabBtn">つかむ！</button>
+      <div class="hint" id="hint">クローが動いています。タイミングよく「つかむ！」を押そう</div>
+    </div>
+  </div>
+
+  <div id="playerStatusScreen" class="status-screen hidden">
+    <h2 id="statusTitle"></h2>
+    <p id="statusBody"></p>
+  </div>
+
+  <div id="resultCard" class="result-card hidden">
+    <div class="eyebrow">YOU GOT IT</div>
+    <h2 id="resultName"></h2>
+    <div id="resultMeta" style="font-size:12px; color:#6a5636; margin-top:2px;"></div>
+    <span class="tier-tag" id="resultTier"></span>
+    <p class="note">商品の発送の準備をいたしますので、届くまでしばらくお待ちください。<br>ご挑戦、誠にありがとうございます。</p>
+    <p class="note" style="margin-top:8px; font-size:11px; color:#8a7a63;">このURLでは再度プレイできません。</p>
+  </div>
+</div>
+
+<!-- ============ ADMIN VIEW ============ -->
+<div id="adminApp" class="admin-wrap hidden">
+
+  <div id="lockScreen" class="lock-screen hidden">
+    <div class="admin-title">
+      <h1>WHISKY CATCHER</h1>
+      <p>admin</p>
+    </div>
+    <input type="password" id="passInput" placeholder="管理パスコード" inputmode="numeric">
+    <div class="err-msg" id="lockErr"></div>
+    <button class="btn" id="unlockBtn" style="width:100%">開く</button>
+  </div>
+
+  <div id="dashboard" class="hidden">
+    <div class="admin-title">
+      <h1>WHISKY CATCHER</h1>
+      <p>admin dashboard</p>
+    </div>
+
+    <div class="admin-card">
+      <h2>商品一覧</h2>
+      <div id="prizeList"></div>
+      <div class="row-actions">
+        <button class="btn secondary small" id="addPrizeBtn">＋ 商品を追加</button>
+      </div>
+      <p class="gen-note">レアリティによって「実際に掴める確率」が変わります（N＝掴みやすい／SSR＝掴みにくい）。在庫0の商品はゲーム内に出現しません。</p>
+    </div>
+
+    <div class="admin-card hidden" id="prizeEditCard">
+      <h2 id="prizeEditTitle">商品を編集する</h2>
+      <div class="edit-grid">
+        <div>
+          <label class="field-label">商品番号（6桁・任意）</label>
+          <input type="text" id="editCode" maxlength="6" placeholder="例：100001">
+        </div>
+        <div>
+          <label class="field-label">数量（本）</label>
+          <input type="number" id="editStock" min="0" placeholder="例：3（空欄で無制限）">
+        </div>
+      </div>
+      <label class="field-label">銘柄名</label>
+      <input type="text" id="editName" placeholder="例：響 Harmony">
+      <div class="edit-grid">
+        <div>
+          <label class="field-label">蒸留所</label>
+          <input type="text" id="editDistillery" placeholder="例：サントリー">
+        </div>
+        <div>
+          <label class="field-label">産地・地域</label>
+          <input type="text" id="editRegion" placeholder="例：京都・山崎">
+        </div>
+      </div>
+      <label class="field-label">レアリティ</label>
+      <select id="editTier">
+        <option value="super">SSR（最高レア）</option>
+        <option value="rare">SR</option>
+        <option value="common">N</option>
+      </select>
+      <label class="field-label">説明文（任意）</label>
+      <textarea id="editDescription" rows="3" placeholder="例：華やかなミズナラ樽とシェリー樽の調和。繊細で深みある甘さ。"></textarea>
+      <label class="field-label">抽選重み（出やすさの目安・任意）</label>
+      <input type="number" id="editWeight" min="1" placeholder="未入力ならレアリティの標準値を使用">
+      <div class="row-actions" style="margin-top:14px;">
+        <button class="btn secondary" id="cancelEditBtn">キャンセル</button>
+        <button class="btn" id="saveEditBtn">保存する</button>
+      </div>
+      <span class="err-msg" id="prizeSaveMsg"></span>
+    </div>
+
+    <div class="admin-card">
+      <h2>注文用URLの発行</h2>
+      <p class="gen-note">支払いを確認したら発行し、そのURLをお客様に送ってください。1つのURLで、当たるまで何度でも挑戦でき、当たったら自動的に終了。同じURLでは二度と遊べません。</p>
+      <input type="text" id="customerNameInput" placeholder="お客様名・メモ（任意、注文状況の一覧に表示されます）" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(201,163,90,0.4); background:#0c0805; color:var(--paper); font-family:'Oswald',sans-serif; font-size:13px; margin-bottom:10px;">
+      <button class="btn" id="genUrlBtn">新しい注文URLを発行</button>
+      <div class="url-box hidden" id="urlBox">
+        <input type="text" id="urlOutput" readonly>
+        <button class="btn secondary small" id="copyUrlBtn">コピー</button>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <h2>注文状況 <button class="btn secondary small" id="refreshOrdersBtn">更新</button></h2>
+      <div id="ordersWrap"><div class="empty-note">読み込み中…</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, collection, getDocs
+} from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+(async function(){
+  "use strict";
+
+  // ================= CONFIG =================
+  // 管理画面のパスコード。公開前に必ず変更してください。
+  // ソースコードを見れば分かってしまうため、強固なセキュリティではなく
+  // 「お客様が誤って管理画面に入らないための簡易ロック」です。
+  const ADMIN_PASSCODE = "0903whisky";
+
+  // Firebase設定。Firebaseコンソール(プロジェクト設定 > マイアプリ > SDK設定)から
+  // コピーした値に置き換えてください。下記はプレースホルダーです。
+  const firebaseConfig = {
+    apiKey: "AIzaSyDenaN1kWyRhYogLWMNetT5eAoto7jl5Lc",
+    authDomain: "whisky-catcher.firebaseapp.com",
+    projectId: "whisky-catcher",
+    storageBucket: "whisky-catcher.firebasestorage.app",
+    messagingSenderId: "964198305262",
+    appId: "1:964198305262:web:ce9b05bfd959bff01692ff"
+  };
+  const FIREBASE_NOT_CONFIGURED = firebaseConfig.apiKey === "YOUR_API_KEY";
+
+  let db = null;
+  if(!FIREBASE_NOT_CONFIGURED){
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+  }
+
+  const TIER_META = {
+    common: { label:"N",   chance:0.82, color:"#8a5a2b", labelColor:"#e8d8b8", tag:"r-common", cls:"common", defaultWeight:30 },
+    rare:   { label:"SR",  chance:0.50, color:"#b8791f", labelColor:"#fff2d0", tag:"r-rare",   cls:"rare",   defaultWeight:12 },
+    super:  { label:"SSR", chance:0.28, color:"#8a1f45", labelColor:"#ffe0ea", tag:"r-super",  cls:"super",  defaultWeight:3  }
+  };
+  // ================= Firestore helpers =================
+  // config/prizes         -> { items: [...] }
+  // tokens/{tokenId}       -> { status, createdAt, usedAt, attempts, prizeWon }
+  async function fGetPrizes(){
+    if(!db) return null;
+    try{
+      const snap = await getDoc(doc(db, "config", "prizes"));
+      return snap.exists() ? (snap.data().items || []) : null;
+    }catch(e){ return null; }
+  }
+  async function fSetPrizes(list){
+    if(!db) return false;
+    try{ await setDoc(doc(db, "config", "prizes"), { items:list }); return true; }
+    catch(e){ return false; }
+  }
+  async function fGetToken(id){
+    if(!db) return null;
+    try{
+      const snap = await getDoc(doc(db, "tokens", id));
+      return snap.exists() ? snap.data() : null;
+    }catch(e){ return null; }
+  }
+  async function fSetToken(id, data){
+    if(!db) return false;
+    try{ await setDoc(doc(db, "tokens", id), data); return true; }
+    catch(e){ return false; }
+  }
+  async function fListTokens(){
+    if(!db) return [];
+    try{
+      const snap = await getDocs(collection(db, "tokens"));
+      const out = [];
+      snap.forEach(d=> out.push({ id:d.id, ...d.data() }));
+      return out;
+    }catch(e){ return []; }
+  }
+
+  function genToken(len){
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let s = "";
+    for(let i=0;i<len;i++) s += chars[Math.floor(Math.random()*chars.length)];
+    return s;
+  }
+
+  function baseUrl(){
+    return location.origin + location.pathname;
+  }
+
+  async function loadPrizes(){
+    return fGetPrizes();
+  }
+  async function savePrizes(list){
+    return fSetPrizes(list);
+  }
+
+  const DEFAULT_PRIZES = [
+    { id:"p1", code:"", name:"サンプル：ハウスブレンド", distillery:"", region:"", tier:"common", weight:30, stock:null, description:"" },
+    { id:"p2", code:"", name:"サンプル：シングルモルト12年", distillery:"", region:"", tier:"rare", weight:12, stock:20, description:"" },
+    { id:"p3", code:"", name:"サンプル：限定カスク原酒", distillery:"", region:"", tier:"super", weight:3, stock:3, description:"" }
+  ];
+
+  // ================= boot =================
+  const params = new URLSearchParams(location.search);
+  const token = params.get("token");
+  const loadingEl = document.getElementById("loading");
+
+  if(FIREBASE_NOT_CONFIGURED){
+    loadingEl.textContent = "";
+    loadingEl.innerHTML = '<div style="max-width:360px;margin:40px auto;text-align:center;line-height:1.8;">'
+      + '<strong style="color:#ffb454;">Firebaseが未設定です</strong><br>'
+      + 'index.html 内の <code>firebaseConfig</code> を、あなたのFirebaseプロジェクトの値に置き換えてください。'
+      + '</div>';
+  } else if(token){
+    initPlayer(token);
+  } else {
+    initAdmin();
+  }
+
+  // =====================================================
+  // ==================  ADMIN  =========================
+  // =====================================================
+  async function initAdmin(){
+    loadingEl.classList.add("hidden");
+    document.getElementById("adminApp").classList.remove("hidden");
+
+    if(sessionStorage.getItem("wc_admin_unlocked") === "1"){
+      showDashboard();
+    } else {
+      document.getElementById("lockScreen").classList.remove("hidden");
+      document.getElementById("unlockBtn").addEventListener("click", tryUnlock);
+      document.getElementById("passInput").addEventListener("keydown", (e)=>{
+        if(e.key === "Enter") tryUnlock();
+      });
+    }
+  }
+
+  function tryUnlock(){
+    const val = document.getElementById("passInput").value;
+    if(val === ADMIN_PASSCODE){
+      sessionStorage.setItem("wc_admin_unlocked", "1");
+      document.getElementById("lockScreen").classList.add("hidden");
+      showDashboard();
+    } else {
+      document.getElementById("lockErr").textContent = "パスコードが違います";
+    }
+  }
+
+  let currentPrizes = [];
+
+  async function showDashboard(){
+    document.getElementById("dashboard").classList.remove("hidden");
+
+    let prizes = await loadPrizes();
+    if(prizes === null){
+      prizes = DEFAULT_PRIZES;
+      await savePrizes(prizes);
+    }
+    currentPrizes = prizes;
+    renderPrizeRows();
+
+    document.getElementById("addPrizeBtn").addEventListener("click", ()=> openEditForm(null));
+    document.getElementById("cancelEditBtn").addEventListener("click", closeEditForm);
+    document.getElementById("saveEditBtn").addEventListener("click", onSaveEdit);
+    document.getElementById("genUrlBtn").addEventListener("click", onGenUrl);
+    document.getElementById("copyUrlBtn").addEventListener("click", onCopyUrl);
+    document.getElementById("refreshOrdersBtn").addEventListener("click", renderOrders);
+
+    renderOrders();
+  }
+
+  function renderPrizeRows(){
+    const wrap = document.getElementById("prizeList");
+    if(currentPrizes.length === 0){
+      wrap.innerHTML = '<div class="empty-note">商品がまだ登録されていません</div>';
+      return;
+    }
+    wrap.innerHTML = "";
+    currentPrizes.forEach((p)=>{
+      const meta = TIER_META[p.tier] || TIER_META.common;
+      const stockText = (p.stock === null || p.stock === undefined) ? "在庫 無制限" : `在庫 ${p.stock}本`;
+      const metaLine = [p.distillery, p.region].filter(Boolean).join(" ー ");
+      const card = document.createElement("div");
+      card.className = "prize-card";
+      card.innerHTML = `
+        <div class="info">
+          <div class="name">${escapeAttr(p.name)}</div>
+          <div class="meta">${metaLine ? escapeAttr(metaLine) + " | " : ""}${stockText}</div>
+        </div>
+        <div class="actions">
+          <span class="rarity-chip ${meta.cls}">${meta.label}</span>
+          <button class="icon-btn" data-id="${p.id}" data-action="edit">編集</button>
+          <button class="icon-btn rm" data-id="${p.id}" data-action="delete">削除</button>
+        </div>
+      `;
+      wrap.appendChild(card);
+    });
+
+    wrap.querySelectorAll('[data-action="edit"]').forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const p = currentPrizes.find(x=>x.id === btn.dataset.id);
+        if(p) openEditForm(p);
+      });
+    });
+    wrap.querySelectorAll('[data-action="delete"]').forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        if(!confirm("この商品を削除しますか？")) return;
+        currentPrizes = currentPrizes.filter(x=>x.id !== btn.dataset.id);
+        await savePrizes(currentPrizes);
+        renderPrizeRows();
+      });
+    });
+  }
+
+  function escapeAttr(s){
+    return String(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+  }
+
+  let editingId = null;
+
+  function openEditForm(prize){
+    editingId = prize ? prize.id : null;
+    document.getElementById("prizeEditTitle").textContent = prize ? "商品を編集する" : "商品を追加する";
+    document.getElementById("editCode").value = prize ? (prize.code||"") : "";
+    document.getElementById("editStock").value = prize && (prize.stock!==null && prize.stock!==undefined) ? prize.stock : "";
+    document.getElementById("editName").value = prize ? (prize.name||"") : "";
+    document.getElementById("editDistillery").value = prize ? (prize.distillery||"") : "";
+    document.getElementById("editRegion").value = prize ? (prize.region||"") : "";
+    document.getElementById("editTier").value = prize ? prize.tier : "common";
+    document.getElementById("editDescription").value = prize ? (prize.description||"") : "";
+    document.getElementById("editWeight").value = prize ? (prize.weight||"") : "";
+    document.getElementById("prizeSaveMsg").textContent = "";
+    document.getElementById("prizeEditCard").classList.remove("hidden");
+    document.getElementById("prizeEditCard").scrollIntoView({behavior:"smooth", block:"center"});
+  }
+
+  function closeEditForm(){
+    editingId = null;
+    document.getElementById("prizeEditCard").classList.add("hidden");
+  }
+
+  async function onSaveEdit(){
+    const msg = document.getElementById("prizeSaveMsg");
+    const name = document.getElementById("editName").value.trim();
+    if(!name){
+      msg.textContent = "銘柄名を入力してください";
+      msg.style.color = "#ff8a7a";
+      return;
+    }
+    const tier = document.getElementById("editTier").value;
+    const stockRaw = document.getElementById("editStock").value;
+    const weightRaw = document.getElementById("editWeight").value;
+    const prize = {
+      id: editingId || ("p"+Date.now()),
+      code: document.getElementById("editCode").value.trim(),
+      name,
+      distillery: document.getElementById("editDistillery").value.trim(),
+      region: document.getElementById("editRegion").value.trim(),
+      tier,
+      weight: weightRaw ? Math.max(1, parseInt(weightRaw,10)) : (TIER_META[tier]?TIER_META[tier].defaultWeight:10),
+      stock: stockRaw === "" ? null : Math.max(0, parseInt(stockRaw,10)),
+      description: document.getElementById("editDescription").value.trim()
+    };
+    if(editingId){
+      const idx = currentPrizes.findIndex(p=>p.id === editingId);
+      if(idx !== -1) currentPrizes[idx] = prize; else currentPrizes.push(prize);
+    } else {
+      currentPrizes.push(prize);
+    }
+    const ok = await savePrizes(currentPrizes);
+    if(ok){
+      closeEditForm();
+      renderPrizeRows();
+    } else {
+      msg.textContent = "保存に失敗しました";
+      msg.style.color = "#ff8a7a";
+    }
+  }
+
+
+  async function onGenUrl(){
+    const btn = document.getElementById("genUrlBtn");
+    const nameInput = document.getElementById("customerNameInput");
+    btn.disabled = true;
+    let id = genToken(7);
+    // avoid extremely unlikely collision
+    let exists = await fGetToken(id);
+    let tries = 0;
+    while(exists && tries < 5){
+      id = genToken(7);
+      exists = await fGetToken(id);
+      tries++;
+    }
+    const customerName = (nameInput.value || "").trim();
+    const record = { status:"unused", createdAt: Date.now(), usedAt:null, attempts:0, prizeWon:null, customerName };
+    await fSetToken(id, record);
+    const url = baseUrl() + "?token=" + id;
+    document.getElementById("urlOutput").value = url;
+    document.getElementById("urlBox").classList.remove("hidden");
+    nameInput.value = "";
+    btn.disabled = false;
+    renderOrders();
+  }
+
+  function onCopyUrl(){
+    const input = document.getElementById("urlOutput");
+    input.select();
+    input.setSelectionRange(0, 99999);
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(input.value).catch(()=>{ prompt("このURLをコピーしてください:", input.value); });
+    } else {
+      prompt("このURLをコピーしてください:", input.value);
+    }
+  }
+
+  async function renderOrders(){
+    const wrap = document.getElementById("ordersWrap");
+    wrap.innerHTML = '<div class="empty-note">読み込み中…</div>';
+    const records = await fListTokens();
+    if(!records.length){
+      wrap.innerHTML = '<div class="empty-note">まだ発行されたURLはありません</div>';
+      return;
+    }
+    records.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
+
+    let html = '<table class="orders"><thead><tr><th>お客様</th><th>トークン</th><th>状態</th><th>試行</th><th>景品</th><th>発行日時</th></tr></thead><tbody>';
+    for(const r of records){
+      let badge, badgeClass;
+      if(r.status === "used"){ badge = "受取済み"; badgeClass = "done"; }
+      else if((r.attempts||0) > 0){ badge = "プレイ中"; badgeClass = "playing"; }
+      else { badge = "未使用"; badgeClass = "unused"; }
+      const prizeName = r.prizeWon ? r.prizeWon.name : "-";
+      const date = r.createdAt ? new Date(r.createdAt).toLocaleString("ja-JP") : "-";
+      const customer = r.customerName ? escapeAttr(r.customerName) : '<span style="color:#8a7a63;">-</span>';
+      html += `<tr>
+        <td>${customer}</td>
+        <td>${r.id}</td>
+        <td><span class="badge ${badgeClass}">${badge}</span></td>
+        <td>${r.attempts||0}</td>
+        <td>${prizeName}</td>
+        <td>${date}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  }
+
+  // =====================================================
+  // ==================  PLAYER  =========================
+  // =====================================================
+  async function initPlayer(tok){
+    const record = await fGetToken(tok);
+    loadingEl.classList.add("hidden");
+    const playerApp = document.getElementById("playerApp");
+    playerApp.classList.remove("hidden");
+
+    if(!record){
+      showPlayerStatus("リンクが無効です", "このURLは見つかりませんでした。発行者にもう一度URLを送ってもらってください。");
+      return;
+    }
+
+    if(record.status === "used"){
+      const p = record.prizeWon;
+      const metaLine = p ? [p.distillery, p.region].filter(Boolean).join(" ー ") : "";
+      showResultCard(p ? p.name : "商品", p ? p.tier : "common", true, metaLine);
+      return;
+    }
+
+    let prizesRaw = await loadPrizes();
+    if(!prizesRaw || prizesRaw.length === 0){
+      showPlayerStatus("準備中です", "現在ご用意できる商品がありません。しばらくしてから、またお試しください。");
+      return;
+    }
+
+    startGame(tok, record, prizesRaw);
+  }
+
+  function showPlayerStatus(title, body){
+    document.getElementById("playerGameArea").classList.add("hidden");
+    const s = document.getElementById("playerStatusScreen");
+    s.classList.remove("hidden");
+    document.getElementById("statusTitle").textContent = title;
+    document.getElementById("statusBody").textContent = body;
+  }
+
+  function showResultCard(name, tier, alreadyClaimed, metaLine){
+    document.getElementById("playerGameArea").classList.add("hidden");
+    const card = document.getElementById("resultCard");
+    card.classList.remove("hidden");
+    document.getElementById("resultName").textContent = name;
+    document.getElementById("resultMeta").textContent = metaLine || "";
+    const meta = TIER_META[tier] || TIER_META.common;
+    const tag = document.getElementById("resultTier");
+    tag.textContent = meta.label;
+    tag.style.background = meta.color;
+    tag.style.color = meta.labelColor;
+    if(alreadyClaimed){
+      card.querySelector(".eyebrow").textContent = "既に受け取り済みです";
+    }
+  }
+
+  // ---------------- claw game engine ----------------
+  function startGame(tok, record, prizePool){
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    const grabBtn = document.getElementById('grabBtn');
+    const hint = document.getElementById('hint');
+    const toast = document.getElementById('toast');
+    const attemptCountEl = document.getElementById('attemptCount');
+
+    let attempts = record.attempts || 0;
+    attemptCountEl.textContent = String(attempts).padStart(3,'0');
+
+    async function persistRecord(patch){
+      Object.assign(record, patch);
+      await fSetToken(tok, record);
+    }
+
+    function activePool(){
+      return prizePool.filter(p => p.stock === null || p.stock === undefined || p.stock > 0);
+    }
+
+    function weightedPrize(){
+      const pool = activePool();
+      if(pool.length === 0) return null;
+      const total = pool.reduce((s,p)=>s+ (p.weight||1), 0);
+      let r = Math.random()*total;
+      for(const p of pool){
+        if(r < (p.weight||1)) return p;
+        r -= (p.weight||1);
+      }
+      return pool[0];
+    }
+
+    const cols = 4, rows = 2;
+    const pitTop = 230, pitBottom = 330;
+    const marginX = 34;
+    const slotW = (W - marginX*2) / cols;
+    let bottles = [];
+
+    function buildBottles(){
+      bottles = [];
+      for(let row=0; row<rows; row++){
+        for(let col=0; col<cols; col++){
+          const prize = weightedPrize();
+          if(!prize) continue;
+          const bw = 30 + Math.random()*6;
+          const bh = 46 + Math.random()*14;
+          const x = marginX + col*slotW + slotW/2 + (Math.random()*10-5);
+          const y = pitBottom - bh/2 - row*30 - (Math.random()*4);
+          bottles.push({ prize, x, y, w:bw, h:bh, alive:true, wobble: Math.random()*Math.PI*2 });
+        }
+      }
+    }
+    buildBottles();
+
+    if(bottles.length === 0){
+      showPlayerStatus("準備中です", "現在ご用意できる商品がありません。しばらくしてから、またお試しください。");
+      return;
+    }
+
+    const RAIL_Y = 30;
+    const claw = {
+      x: W/2, y: RAIL_Y, dir:1, speed:1.6,
+      state:'moving', targetY: RAIL_Y, grabbed:null, open:30, timer:0,
+      chuteX: W - 40, ring:null
+    };
+    let popup = null;
+    let gameOver = false;
+
+    function nearestBottle(){
+      let best=null, bestDist=Infinity;
+      for(const b of bottles){
+        if(!b.alive) continue;
+        const d = Math.abs(b.x - claw.x);
+        if(d < bestDist){ bestDist = d; best = b; }
+      }
+      return {bottle:best, dist:bestDist};
+    }
+
+    function showToast(text, cls){
+      toast.className = 'toast ' + cls;
+      toast.innerHTML = text;
+      requestAnimationFrame(()=>toast.classList.add('show'));
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=>{ toast.classList.remove('show'); }, 2200);
+    }
+
+    function flashRing(success){
+      claw.ring = { life:26, maxLife:26, color: success ? '#5be07a' : '#ff5b5b' };
+    }
+
+    async function attemptGrab(){
+      attempts++;
+      attemptCountEl.textContent = String(attempts).padStart(3,'0');
+      persistRecord({ attempts });
+
+      const {bottle, dist} = nearestBottle();
+      claw.state = 'closing';
+      claw.timer = 18;
+
+      if(!bottle || dist > 24){
+        resolveResult(false, null);
+        return;
+      }
+      const meta = TIER_META[bottle.prize.tier] || TIER_META.common;
+      const accuracy = Math.max(0, 1 - dist/24);
+      const successChance = meta.chance * (0.5 + 0.5*accuracy);
+
+      if(Math.random() < successChance){
+        // double-check stock hasn't just run out (defensive, low risk at this scale)
+        const freshPool = await loadPrizes();
+        const freshPrize = freshPool ? freshPool.find(p=>p.id === bottle.prize.id) : null;
+        if(freshPrize && freshPrize.stock !== null && freshPrize.stock !== undefined && freshPrize.stock <= 0){
+          resolveResult(false, bottle.prize);
+          return;
+        }
+        claw.grabbed = bottle;
+        bottle.alive = false;
+        bottle.beingCarried = true;
+        bottle.x = claw.x;
+        bottle.y = claw.y + 22;
+        resolveResult(true, bottle.prize, freshPool);
+      } else {
+        resolveResult(false, bottle.prize);
+      }
+    }
+
+    async function resolveResult(success, prize, freshPool){
+      if(success){
+        showToast(`GET！ ${escapeAttr(prize.name)} <span class="rarity">${TIER_META[prize.tier].label}</span>`, TIER_META[prize.tier].tag);
+        hint.textContent = 'キャッチ成功！シュートへ運んでいます…';
+        popup = { text:'GET!!', color:'#ffe08a', glow:'#ffb454', x:claw.x, y:claw.targetY-16, life:52, maxLife:52 };
+        flashRing(true);
+        gameOver = true;
+
+        // decrement stock if limited
+        if(freshPool){
+          const idx = freshPool.findIndex(p=>p.id === prize.id);
+          if(idx !== -1 && freshPool[idx].stock !== null && freshPool[idx].stock !== undefined){
+            freshPool[idx].stock = Math.max(0, freshPool[idx].stock - 1);
+            await savePrizes(freshPool);
+          }
+        }
+        await persistRecord({ status:'used', usedAt: Date.now(), prizeWon:{name:prize.name, tier:prize.tier, distillery:prize.distillery||"", region:prize.region||""} });
+      } else {
+        showToast(`失敗… すべって落下 <span class="rarity">また挑戦しよう</span>`, 'r-fail');
+        hint.textContent = '失敗…もう一度挑戦しよう';
+        popup = { text:'MISS...', color:'#ff9a8a', glow:'#ff3b3b', x:claw.x, y:claw.targetY-16, life:52, maxLife:52 };
+        flashRing(false);
+      }
+    }
+
+    function deliverPrize(){ claw.state = 'dropInChute'; claw.timer = 14; }
+
+    function finishDelivery(){
+      if(gameOver){
+        const p = claw.grabbed.prize;
+        const metaLine = [p.distillery, p.region].filter(Boolean).join(" ー ");
+        showResultCard(p.name, p.tier, false, metaLine);
+        return;
+      }
+      claw.grabbed = null;
+      claw.open = 30;
+      claw.state = 'moving';
+      claw.dir = Math.random()<0.5?-1:1;
+      grabBtn.disabled = false;
+      hint.textContent = 'クローが動いています。タイミングよく「つかむ！」を押そう';
+    }
+
+    function update(){
+      if(claw.state === 'moving'){
+        claw.x += claw.dir * claw.speed;
+        if(claw.x < 26){ claw.x = 26; claw.dir = 1; }
+        if(claw.x > W-26){ claw.x = W-26; claw.dir = -1; }
+      }
+      else if(claw.state === 'dropping'){
+        claw.y += 3.2;
+        if(claw.y >= claw.targetY){ claw.y = claw.targetY; attemptGrab(); }
+      }
+      else if(claw.state === 'closing'){
+        claw.timer--;
+        claw.open = Math.max(6, claw.open - 2);
+        if(claw.grabbed){ claw.grabbed.x = claw.x; claw.grabbed.y = claw.y + 22; }
+        if(claw.timer<=0){ claw.state = 'rising'; }
+      }
+      else if(claw.state === 'rising'){
+        claw.y -= 2.6;
+        if(claw.grabbed){ claw.grabbed.x = claw.x; claw.grabbed.y = claw.y + 22; }
+        if(claw.y <= RAIL_Y){
+          claw.y = RAIL_Y;
+          if(claw.grabbed){ claw.state = 'delivering'; }
+          else if(!gameOver){
+            claw.open = 30; claw.state = 'moving';
+            grabBtn.disabled = false;
+            hint.textContent = 'クローが動いています。タイミングよく「つかむ！」を押そう';
+          }
+        }
+      }
+      else if(claw.state === 'delivering'){
+        const dx = claw.chuteX - claw.x;
+        claw.x += Math.sign(dx) * 2.2;
+        if(claw.grabbed){ claw.grabbed.x = claw.x; claw.grabbed.y = claw.y + 22; }
+        if(Math.abs(dx) < 3){ deliverPrize(); }
+      }
+      else if(claw.state === 'dropInChute'){
+        claw.timer--;
+        if(claw.grabbed){ claw.grabbed.y += 4; }
+        if(claw.timer <= 0){ finishDelivery(); }
+      }
+
+      for(const b of bottles){ if(b.alive && !b.beingCarried) b.wobble += 0.01; }
+      if(popup){ popup.life--; popup.y -= 0.5; if(popup.life<=0) popup=null; }
+      if(claw.ring){ claw.ring.life--; if(claw.ring.life<=0) claw.ring=null; }
+    }
+
+    function roundRect(c,x,y,w,h,r){
+      c.beginPath(); c.moveTo(x+r,y);
+      c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
+      c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();
+    }
+
+    function drawPit(){
+      const grad = ctx.createLinearGradient(0, pitTop, 0, H);
+      grad.addColorStop(0, 'rgba(30,58,58,0.15)'); grad.addColorStop(1, 'rgba(10,6,4,0.9)');
+      ctx.fillStyle = grad; ctx.fillRect(0, pitTop-10, W, H-(pitTop-10));
+      ctx.strokeStyle = 'rgba(255,180,84,0.05)';
+      for(let i=0;i<6;i++){ ctx.beginPath(); ctx.moveTo(0, pitTop + i*18); ctx.lineTo(W, pitTop + i*18 - 6); ctx.stroke(); }
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.ellipse(claw.chuteX, H-16, 34, 12, 0, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(201,163,90,0.6)'; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    // Picks the 1-2 character "crest" shown large on the label, mirroring how real
+    // whisky labels lead with a bold brand mark (e.g. 響, 山崎, 白州).
+    function emblemFor(name){
+      const s = (name||"").trim();
+      if(!s) return "?";
+      const firstCode = s.codePointAt(0);
+      const isAscii = firstCode < 128;
+      if(isAscii){
+        // English-ish name: use first letter, uppercase
+        return s[0].toUpperCase();
+      }
+      // Japanese/CJK: take up to first 2 characters (skipping a leading "サンプル："-style prefix if present)
+      const cleaned = s.replace(/^(サンプル|見本)[：:]\s*/,"");
+      const chars = Array.from(cleaned.length ? cleaned : s);
+      return chars.slice(0,2).join("");
+    }
+
+    function drawBottle(b){
+      if(!b.alive && !b.beingCarried) return;
+      const wob = b.beingCarried ? 0 : Math.sin(b.wobble)*0.03;
+      const meta = TIER_META[b.prize.tier] || TIER_META.common;
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(wob);
+      const w = b.w, h = b.h;
+      if(!b.beingCarried){
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath(); ctx.ellipse(0, h/2+4, w/2, 5, 0, 0, Math.PI*2); ctx.fill();
+      }
+      const bodyGrad = ctx.createLinearGradient(-w/2,0,w/2,0);
+      bodyGrad.addColorStop(0, 'rgba(255,255,255,0.25)');
+      bodyGrad.addColorStop(0.25, meta.color);
+      bodyGrad.addColorStop(1, 'rgba(0,0,0,0.35)');
+      ctx.fillStyle = bodyGrad;
+      roundRect(ctx, -w/2, -h/2+8, w, h-8, 4); ctx.fill();
+      ctx.fillStyle = meta.color; ctx.fillRect(-w/6, -h/2-10, w/3, 20);
+      ctx.fillStyle = '#caa35a'; ctx.fillRect(-w/6-1, -h/2-14, w/3+2, 6);
+
+      // label plate
+      const labelX = -w/2+4, labelY = -h/2+20, labelW = w-8, labelH = h*0.4;
+      ctx.fillStyle = meta.labelColor;
+      roundRect(ctx, labelX, labelY, labelW, labelH, 2); ctx.fill();
+
+      // tier-specific trim: gold foil for SSR, silver-blue for SR, plain hairline for N
+      if(b.prize.tier === 'super'){
+        ctx.strokeStyle = '#c9a35a'; ctx.lineWidth = 1.4;
+        roundRect(ctx, labelX+1.5, labelY+1.5, labelW-3, labelH-3, 1.5); ctx.stroke();
+      } else if(b.prize.tier === 'rare'){
+        ctx.strokeStyle = 'rgba(90,150,224,0.55)'; ctx.lineWidth = 1;
+        roundRect(ctx, labelX+1.2, labelY+1.2, labelW-2.4, labelH-2.4, 1.5); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+
+      // brand emblem: 1-2 large characters, echoing real whisky labels
+      const emblem = emblemFor(b.prize.name);
+      const fontSize = Math.min(labelW / (emblem.length * 0.68), labelH * 0.72);
+      ctx.fillStyle = 'rgba(36,18,7,0.85)';
+      ctx.font = `700 ${fontSize}px 'Cormorant Garamond', serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(emblem, 0, labelY + labelH/2 + fontSize*0.04);
+
+      // tiny rule under the emblem for a label-like finish
+      ctx.strokeStyle = 'rgba(36,18,7,0.3)'; ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(labelX+labelW*0.22, labelY+labelH*0.86);
+      ctx.lineTo(labelX+labelW*0.78, labelY+labelH*0.86);
+      ctx.stroke();
+
+      if(b.prize.tier === 'super'){
+        const t = Date.now()/300;
+        ctx.fillStyle = `rgba(255,255,255,${0.4+0.3*Math.sin(t)})`;
+        ctx.beginPath(); ctx.arc(w/4, -h/4, 2, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawClaw(){
+      ctx.strokeStyle = 'rgba(201,163,90,0.5)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(0, RAIL_Y-14); ctx.lineTo(W, RAIL_Y-14); ctx.stroke();
+      ctx.strokeStyle = '#8a8a8a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(claw.x, RAIL_Y-14); ctx.lineTo(claw.x, claw.y); ctx.stroke();
+      ctx.fillStyle = '#c9a35a';
+      ctx.beginPath(); ctx.arc(claw.x, RAIL_Y-14, 6, 0, Math.PI*2); ctx.fill();
+      ctx.save(); ctx.translate(claw.x, claw.y);
+      ctx.fillStyle = '#d9d2c4'; ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2); ctx.fill();
+      const spread = claw.open;
+      for(const side of [-1,1]){
+        ctx.save(); ctx.strokeStyle = '#eae4d6'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(side*spread*0.5, 14); ctx.lineTo(side*spread*0.3, 26);
+        ctx.stroke(); ctx.restore();
+      }
+      ctx.restore();
+      if(claw.ring){
+        const t = claw.ring.life / claw.ring.maxLife;
+        ctx.save(); ctx.globalAlpha = t; ctx.strokeStyle = claw.ring.color; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(claw.x, claw.y, 16 + (1-t)*18, 0, Math.PI*2); ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function drawPopup(){
+      if(!popup) return;
+      const t = popup.life / popup.maxLife;
+      ctx.save(); ctx.globalAlpha = Math.min(1, t*1.6); ctx.textAlign = 'center';
+      ctx.font = "bold 26px 'Oswald', sans-serif"; ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.strokeText(popup.text, popup.x, popup.y);
+      ctx.fillStyle = popup.color; ctx.shadowColor = popup.glow; ctx.shadowBlur = 14;
+      ctx.fillText(popup.text, popup.x, popup.y); ctx.restore();
+    }
+
+    function render(){
+      ctx.clearRect(0,0,W,H);
+      const g = ctx.createRadialGradient(W/2, 60, 10, W/2, 60, 220);
+      g.addColorStop(0, 'rgba(255,180,84,0.14)'); g.addColorStop(1, 'rgba(255,180,84,0)');
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+      drawPit();
+      for(const b of bottles) if(!b.beingCarried) drawBottle(b);
+      drawClaw();
+      if(claw.grabbed) drawBottle(claw.grabbed);
+      drawPopup();
+    }
+
+    function loop(){ update(); render(); requestAnimationFrame(loop); }
+
+    grabBtn.addEventListener('click', ()=>{
+      if(claw.state !== 'moving' || gameOver) return;
+      grabBtn.disabled = true;
+      hint.textContent = 'ゴゴゴ…降下中…';
+      claw.state = 'dropping';
+      claw.targetY = pitBottom - 30;
+    });
+
+    loop();
+  }
+
+})();
+</script>
+</body>
+</html>
